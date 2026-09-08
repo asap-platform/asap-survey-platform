@@ -100,9 +100,11 @@ const owner = db.prepare('SELECT id FROM users WHERE email=?').get(OWNER_EMAIL);
 if (!owner) {
   db.prepare(`INSERT INTO users (email,name,pass_hash,role,status) VALUES (?,?,?,?,?)`)
     .run(OWNER_EMAIL, 'أيمن السهيان', hashPassword(OWNER_PASS), 'owner', 'active');
-  // assign any existing (pre-accounts) surveys to the owner
-  const ownerId = db.prepare('SELECT id FROM users WHERE email=?').get(OWNER_EMAIL).id;
-  db.prepare('UPDATE surveys SET owner_id=? WHERE owner_id=0 OR owner_id IS NULL').run(ownerId);
+}
+// On every boot: assign any orphan surveys (owner_id=0/NULL) to the site owner.
+const ownerRow2 = db.prepare("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1").get();
+if (ownerRow2) {
+  db.prepare('UPDATE surveys SET owner_id=? WHERE owner_id=0 OR owner_id IS NULL').run(ownerRow2.id);
 }
 
 module.exports = db;
