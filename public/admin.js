@@ -21,20 +21,67 @@ async function api(path, opts={}){
   return r;
 }
 
+let ME = null; // current user {email,name,role}
+
 // ---------- auth ----------
 async function login(){
-  const p = $('pass').value;
-  const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+  const p = $('pass').value; const email = $('loginEmail').value.trim();
+  const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:p})});
   const j = await r.json();
   if(!r.ok){ $('loginErr').textContent = j.error||'خطأ'; return; }
-  TOKEN = j.token; localStorage.setItem('asap_admin_token',TOKEN);
+  TOKEN = j.token; localStorage.setItem('asap_admin_token',TOKEN); ME = j.user||null;
   showApp();
 }
 function logout(){ TOKEN=''; localStorage.removeItem('asap_admin_token'); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
 async function showApp(){
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
   if(!COMPANIES.length){ try{ COMPANIES = await (await fetch('/api/companies')).json(); }catch(e){} }
+  if(!ME){ try{ ME = await (await api('/api/admin/me')).json(); }catch(e){} }
+  if(ME){ $('userBadge').textContent = (ME.name||ME.email) + (ME.role==='owner'?' — المالك':' — منشئ'); }
+  $('usersBtn').style.display = (ME&&ME.role==='owner') ? '' : 'none';
   loadList();
+}
+
+// ---------- users management (owner) ----------
+function showUsers(){
+  $('listView').classList.add('hidden'); $('editView').classList.add('hidden'); $('usersView').classList.remove('hidden');
+  loadUsers();
+}
+async function loadUsers(){
+  const r=await api('/api/admin/users'); if(!r.ok){ alert('صلاحية غير كافية'); backToList(); return; }
+  const users=await r.json();
+  $('usersList').innerHTML = users.map(u=>`
+    <div class="surveycard">
+      <div class="meta">
+        <div style="font-weight:800">${esc(u.name||u.email)} ${u.role==='owner'?'<span class="tag">المالك</span>':''} ${u.status==='invited'?'<span class="tag">بانتظار التفعيل</span>':''}</div>
+        <small>${esc(u.email)} • ${u.surveys} استبيان</small>
+      </div>
+      <div class="row">
+        ${u.status==='invited'?`<button class="btn btn-sm btn-ghost" onclick="reinvite(${u.id})">رابط الدعوة</button>`:''}
+        ${u.role!=='owner'?`<button class="btn btn-sm btn-danger" onclick="delUser(${u.id},'${esc(u.email)}',${u.surveys})">حذف</button>`:''}
+      </div>
+    </div>`).join('');
+}
+async function inviteUser(){
+  const email=$('inviteEmail').value.trim(), name=$('inviteName').value.trim();
+  $('inviteErr').textContent='';
+  const r=await api('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
+  const j=await r.json();
+  if(!r.ok){ $('inviteErr').textContent=j.error; return; }
+  $('inviteLink').value=j.invite_link; $('inviteResult').classList.remove('hidden');
+  $('inviteEmail').value=''; $('inviteName').value=''; loadUsers();
+}
+function copyInvite(){ const el=$('inviteLink'); navigator.clipboard.writeText(el.value); alert('تم نسخ رابط الدعوة'); }
+async function reinvite(id){
+  const r=await api('/api/admin/users/'+id+'/invite',{method:'POST'}); const j=await r.json();
+  if(!r.ok){ alert(j.error); return; }
+  $('inviteLink').value=j.invite_link; $('inviteResult').classList.remove('hidden');
+  $('inviteResult').scrollIntoView({behavior:'smooth'});
+}
+async function delUser(id,email,surveys){
+  if(!confirm('حذف الحساب ('+email+')؟'+(surveys>0?'\nتنبيه: له '+surveys+' استبيان ستبقى لكن بدون مالك.':''))) return;
+  const r=await api('/api/admin/users/'+id,{method:'DELETE'}); const j=await r.json();
+  if(!r.ok){ alert(j.error); return; } loadUsers();
 }
 
 function renderCompanyGrid(){
@@ -65,6 +112,7 @@ async function savePassword(){
 // ---------- list ----------
 async function loadList(){
   $('listView').classList.remove('hidden'); $('editView').classList.add('hidden');
+  const uv=$('usersView'); if(uv) uv.classList.add('hidden');
   const r = await api('/api/admin/surveys'); const list = await r.json();
   const el = $('slist');
   if(!list.length){ el.innerHTML='<div class="card note">لا توجد استبيانات بعد. أنشئ أول استبيان.</div>'; return; }
@@ -77,6 +125,7 @@ async function loadList(){
           <span class="swatch" style="background:${esc(s.color_accent)}"></span>
           &nbsp; الرابط: <a href="/s/${esc(s.slug)}" target="_blank">/s/${esc(s.slug)}</a>
           &nbsp;•&nbsp; ${s.responses} رد
+          ${(ME&&ME.role==='owner'&&s.owner_email)?`&nbsp;•&nbsp; <span style="color:#888">${esc(s.owner_email)}</span>`:''}
           &nbsp; <span class="link-copy" onclick="copyLink('${esc(s.slug)}')">نسخ الرابط</span>
         </small>
       </div>
@@ -97,7 +146,7 @@ async function newSurvey(){
 async function openSurvey(id){
   const r = await api('/api/admin/surveys/'+id); current = await r.json();
   questions = current.questions.map(q=>({...q}));
-  $('listView').classList.add('hidden'); $('editView').classList.remove('hidden');
+  $('listView').classList.add('hidden'); const uv=$('usersView'); if(uv)uv.classList.add('hidden'); $('editView').classList.remove('hidden');
   $('f_title').value=current.title||''; $('f_slug').value=current.slug||'';
   $('f_hero').value=current.hero_title||''; $('f_intro').value=current.intro||'';
   $('f_cp').value=current.color_primary||'#7B2E8E'; $('f_ca').value=current.color_accent||'#29ABE2';

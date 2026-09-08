@@ -17,8 +17,10 @@ const intro = `تعمل أساب للتقنية القانونية على تطو
 
 const thanks = `شكرًا لمشاركتكم. ستساعدنا إجاباتكم على فهم احتياجات الجهات والفرق القانونية بصورة أفضل، وتحديد الأولويات التي ينبغي أن نبني عليها تجربة أساب. سيقوم فريق أساب بمراجعة الردود والتواصل مع الجهات الملائمة للمرحلة التجريبية.`;
 
-const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,company,hero_title,thanks,published)
-  VALUES (?,?,?,?,?,?,?,?,?,1)`).run(
+const ownerRow = db.prepare("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1").get();
+const OWNER_ID = ownerRow ? ownerRow.id : 0;
+const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,company,hero_title,thanks,published,owner_id)
+  VALUES (?,?,?,?,?,?,?,?,?,1,${OWNER_ID})`).run(
   SLUG,
   'استبيان تطوير تجربة إدارة الأعمال القانونية',
   intro,

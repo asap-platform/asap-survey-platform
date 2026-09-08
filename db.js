@@ -48,18 +48,57 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT DEFAULT '',
+  pass_hash TEXT DEFAULT '',      -- scrypt hash (empty until invite accepted)
+  role TEXT DEFAULT 'creator',    -- owner | creator
+  status TEXT DEFAULT 'invited',  -- invited | active | disabled
+  invite_token TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
+
+const crypto = require('node:crypto');
+function hashPassword(pw) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const dk = crypto.scryptSync(String(pw), salt, 32).toString('hex');
+  return salt + ':' + dk;
+}
+function verifyPassword(pw, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  const [salt, dk] = stored.split(':');
+  const test = crypto.scryptSync(String(pw), salt, 32).toString('hex');
+  try { return crypto.timingSafeEqual(Buffer.from(dk, 'hex'), Buffer.from(test, 'hex')); }
+  catch { return false; }
+}
 
 // migration: add company column if missing (for older DBs)
 try {
   const cols = db.prepare("PRAGMA table_info(surveys)").all().map(c => c.name);
   if (!cols.includes('company')) db.exec("ALTER TABLE surveys ADD COLUMN company TEXT DEFAULT 'legaltech'");
+  if (!cols.includes('owner_id')) db.exec("ALTER TABLE surveys ADD COLUMN owner_id INTEGER DEFAULT 0");
 } catch (e) {}
 
-// default admin password
+// default admin password (legacy fallback login)
 const row = db.prepare('SELECT value FROM settings WHERE key=?').get('admin_password');
 if (!row) {
   db.prepare('INSERT INTO settings (key,value) VALUES (?,?)').run('admin_password', 'asap2026');
 }
 
+// seed the owner account (Ayman) — created once, credentials from env or defaults
+const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'ayman@asap.sa').toLowerCase();
+const OWNER_PASS = process.env.OWNER_PASS || 'Asap@6497868';
+const owner = db.prepare('SELECT id FROM users WHERE email=?').get(OWNER_EMAIL);
+if (!owner) {
+  db.prepare(`INSERT INTO users (email,name,pass_hash,role,status) VALUES (?,?,?,?,?)`)
+    .run(OWNER_EMAIL, 'أيمن السهيان', hashPassword(OWNER_PASS), 'owner', 'active');
+  // assign any existing (pre-accounts) surveys to the owner
+  const ownerId = db.prepare('SELECT id FROM users WHERE email=?').get(OWNER_EMAIL).id;
+  db.prepare('UPDATE surveys SET owner_id=? WHERE owner_id=0 OR owner_id IS NULL').run(ownerId);
+}
+
 module.exports = db;
+module.exports.hashPassword = hashPassword;
+module.exports.verifyPassword = verifyPassword;

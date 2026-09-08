@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تفعيل حساب — منصة استبيانات أساب</title>
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<div class="hero"><div class="hero-blobs"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+<div class="hero-inner"><h1 class="hero-title">تفعيل حسابك</h1><p class="hero-sub">منصة استبيانات أساب</p></div></div>
+<div class="wrap"><div class="card" style="max-width:440px;margin:0 auto">
+  <div id="loading" class="note">جارٍ التحقق من الدعوة...</div>
+  <div id="form" style="display:none">
+    <p>مرحبًا، أنشئ كلمة المرور لحسابك:</p>
+    <label class="field" style="display:block;margin-bottom:12px"><span style="font-weight:700">البريد الإلكتروني</span>
+      <input id="email" type="email" disabled style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:#f2f2f7;margin-top:6px"></label>
+    <label class="field" style="display:block;margin-bottom:12px"><span style="font-weight:700">الاسم</span>
+      <input id="name" type="text" placeholder="اسمك" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--line);margin-top:6px"></label>
+    <label class="field" style="display:block;margin-bottom:12px"><span style="font-weight:700">كلمة المرور</span>
+      <input id="pw" type="password" placeholder="6 أحرف على الأقل" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--line);margin-top:6px"></label>
+    <div id="err" class="err"></div>
+    <button class="btn" onclick="submit()" style="width:100%">تفعيل الحساب والدخول</button>
+  </div>
+  <div id="bad" style="display:none;text-align:center">
+    <h3>رابط غير صالح</h3><p class="note">انتهت صلاحية الدعوة أو أنها مستخدمة. تواصل مع مسؤول المنصة.</p>
+  </div>
+</div></div>
+<script>
+const token = new URLSearchParams(location.search).get('token')||'';
+async function init(){
+  try{
+    const r = await fetch('/api/invite/info?token='+encodeURIComponent(token));
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    document.getElementById('email').value = d.email;
+    document.getElementById('name').value = d.name||'';
+    document.getElementById('loading').style.display='none';
+    document.getElementById('form').style.display='block';
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('bad').style.display='block';
+  }
+}
+async function submit(){
+  const err=document.getElementById('err');err.textContent='';
+  const pw=document.getElementById('pw').value, name=document.getElementById('name').value;
+  if(pw.length<6){err.textContent='كلمة المرور 6 أحرف على الأقل';return;}
+  const r=await fetch('/api/invite/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,password:pw,name})});
+  const d=await r.json();
+  if(!r.ok){err.textContent=d.error;return;}
+  localStorage.setItem('asap_admin_token',d.token);
+  location.href='/admin';
+}
+init();
+</script>
+</body></html>
