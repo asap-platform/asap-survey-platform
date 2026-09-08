@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const db = require('./db');
 const { buildXlsx } = require('./xlsx');
+const COMPANIES = require('./companies');
 
 const PORT = process.env.PORT || 4321;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -77,6 +78,11 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 401, { error: 'كلمة المرور غير صحيحة' });
       }
 
+      // --- Public: list ASAP companies (brand registry) ---
+      if (p === '/api/companies' && method === 'GET') {
+        return sendJson(res, 200, COMPANIES);
+      }
+
       // --- Public: get survey by slug ---
       let m;
       if ((m = p.match(/^\/api\/survey\/([^/]+)$/)) && method === 'GET') {
@@ -121,10 +127,11 @@ const server = http.createServer(async (req, res) => {
         // ensure unique
         let base = slug, n = 1;
         while (db.prepare('SELECT 1 FROM surveys WHERE slug=?').get(slug)) slug = base + '-' + (++n);
-        const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,hero_title,thanks,published)
-          VALUES (?,?,?,?,?,?,?,?,?)`).run(
-          slug, b.title || 'استبيان جديد', b.intro || '', b.logo || '',
-          b.color_primary || '#7B2E8E', b.color_accent || '#29ABE2',
+        const comp = COMPANIES.find(c => c.key === b.company) || COMPANIES[2];
+        const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,company,hero_title,thanks,published)
+          VALUES (?,?,?,?,?,?,?,?,?,?)`).run(
+          slug, b.title || 'استبيان جديد', b.intro || '', b.logo || comp.logo,
+          b.color_primary || comp.color_primary, b.color_accent || comp.color_accent, comp.key,
           b.hero_title || '', b.thanks || 'شكرًا لمشاركتكم.', b.published === false ? 0 : 1);
         return sendJson(res, 200, getSurveyById(Number(info.lastInsertRowid)));
       }
@@ -146,10 +153,10 @@ const server = http.createServer(async (req, res) => {
           let base = slug, n = 1;
           while (db.prepare('SELECT 1 FROM surveys WHERE slug=? AND id<>?').get(slug, id)) slug = base + '-' + (++n);
         }
-        db.prepare(`UPDATE surveys SET slug=?,title=?,intro=?,logo=?,color_primary=?,color_accent=?,hero_title=?,thanks=?,published=? WHERE id=?`).run(
+        db.prepare(`UPDATE surveys SET slug=?,title=?,intro=?,logo=?,color_primary=?,color_accent=?,company=?,hero_title=?,thanks=?,published=? WHERE id=?`).run(
           slug, b.title ?? s.title, b.intro ?? s.intro, b.logo ?? s.logo,
           b.color_primary ?? s.color_primary, b.color_accent ?? s.color_accent,
-          b.hero_title ?? s.hero_title, b.thanks ?? s.thanks,
+          b.company ?? s.company, b.hero_title ?? s.hero_title, b.thanks ?? s.thanks,
           b.published === false ? 0 : (b.published === true ? 1 : s.published), id);
         if (Array.isArray(b.questions)) {
           db.prepare('DELETE FROM questions WHERE survey_id=?').run(id);

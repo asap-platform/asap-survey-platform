@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS surveys (
   logo TEXT DEFAULT '',
   color_primary TEXT DEFAULT '#7B2E8E',
   color_accent TEXT DEFAULT '#29ABE2',
+  company TEXT DEFAULT 'legaltech',
   hero_title TEXT DEFAULT '',
   thanks TEXT DEFAULT 'شكرًا لمشاركتكم.',
   published INTEGER DEFAULT 1,
@@ -47,6 +48,12 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 `);
+
+// migration: add company column if missing (for older DBs)
+try {
+  const cols = db.prepare("PRAGMA table_info(surveys)").all().map(c => c.name);
+  if (!cols.includes('company')) db.exec("ALTER TABLE surveys ADD COLUMN company TEXT DEFAULT 'legaltech'");
+} catch (e) {}
 
 // default admin password
 const row = db.prepare('SELECT value FROM settings WHERE key=?').get('admin_password');

@@ -2,6 +2,8 @@
 let TOKEN = localStorage.getItem('asap_admin_token') || '';
 let current = null;      // current survey being edited
 let questions = [];      // working copy
+let COMPANIES = [];      // ASAP brand registry
+let selectedCompany = 'legaltech';
 
 const TYPES = {
   text:'نص قصير', textarea:'فقرة', number:'رقم', phone:'جوال', email:'بريد إلكتروني',
@@ -29,7 +31,28 @@ async function login(){
   showApp();
 }
 function logout(){ TOKEN=''; localStorage.removeItem('asap_admin_token'); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
-function showApp(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); loadList(); }
+async function showApp(){
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  if(!COMPANIES.length){ try{ COMPANIES = await (await fetch('/api/companies')).json(); }catch(e){} }
+  loadList();
+}
+
+function renderCompanyGrid(){
+  const el=$('companyGrid'); if(!el) return;
+  el.innerHTML = COMPANIES.map(c=>`
+    <div class="compcard ${c.key===selectedCompany?'sel':''}" data-key="${c.key}" onclick="pickCompany('${c.key}')">
+      <img src="${c.logo}" alt="${esc(c.name)}">
+      <span class="cdot" style="background:${c.color_primary}"></span>
+      <span class="cname">${esc(c.name)}</span>
+    </div>`).join('');
+}
+function pickCompany(key){
+  const c = COMPANIES.find(x=>x.key===key); if(!c) return;
+  selectedCompany = key;
+  $('f_cp').value = c.color_primary; $('f_ca').value = c.color_accent;
+  $('f_logo').value = c.logo; updateLogoPrev();
+  renderCompanyGrid();
+}
 
 function showPassword(){ $('pwModal').classList.remove('hidden'); $('newPass').value=''; $('pwErr').textContent=''; }
 async function savePassword(){
@@ -80,6 +103,8 @@ async function openSurvey(id){
   $('f_cp').value=current.color_primary||'#7B2E8E'; $('f_ca').value=current.color_accent||'#29ABE2';
   $('f_logo').value=current.logo||''; $('f_thanks').value=current.thanks||'';
   $('f_pub').checked=!!current.published;
+  selectedCompany = current.company || 'legaltech';
+  renderCompanyGrid();
   updateLogoPrev(); updateOpenLink(); renderQuestions(); loadResponses();
 }
 function backToList(){ loadList(); }
@@ -156,7 +181,7 @@ async function saveSurvey(){
     title:$('f_title').value, slug:$('f_slug').value, hero_title:$('f_hero').value,
     intro:$('f_intro').value, color_primary:$('f_cp').value, color_accent:$('f_ca').value,
     logo:$('f_logo').value, thanks:$('f_thanks').value, published:$('f_pub').checked,
-    questions
+    company:selectedCompany, questions
   };
   const r=await api('/api/admin/surveys/'+current.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const j=await r.json();

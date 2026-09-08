@@ -21,24 +21,51 @@ body{
 [dir=rtl]{text-align:right}
 a{color:var(--primary);text-decoration:none}
 
-/* ---------- HERO ---------- */
+/* ---------- HERO (light, tinted toward company color) ---------- */
 .hero{
   position:relative;overflow:hidden;
+  --tint:var(--primary);
   background:
-    radial-gradient(120% 90% at 50% -10%, rgba(123,46,142,.55), transparent 60%),
-    radial-gradient(90% 70% at 80% 20%, rgba(41,171,226,.35), transparent 55%),
-    linear-gradient(160deg,#150f36 0%, #1f1550 45%, #0e1b3a 100%);
-  color:#fff;text-align:center;padding:64px 20px 56px;
+    radial-gradient(120% 85% at 50% -20%, color-mix(in srgb, var(--tint) 26%, #fff), transparent 62%),
+    radial-gradient(90% 70% at 85% 10%, color-mix(in srgb, var(--accent) 18%, #fff), transparent 60%),
+    radial-gradient(80% 70% at 12% 20%, color-mix(in srgb, var(--tint) 14%, #fff), transparent 60%),
+    #ffffff;
+  color:var(--ink);text-align:center;padding:72px 20px 64px;
 }
-.hero::after{
+/* subtle dotted texture */
+.hero::before{
   content:"";position:absolute;inset:0;
-  background-image:radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px);
-  background-size:26px 26px;opacity:.35;pointer-events:none;
+  background-image:radial-gradient(color-mix(in srgb, var(--tint) 22%, transparent) 1px, transparent 1px);
+  background-size:30px 30px;opacity:.4;pointer-events:none;
 }
-.hero-inner{position:relative;z-index:2;max-width:760px;margin:0 auto}
-.hero-logo{max-height:120px;max-width:280px;margin:0 auto 20px;display:block;object-fit:contain}
-.hero-title{font-size:30px;font-weight:800;margin:8px 0 4px;letter-spacing:.2px}
-.hero-sub{font-size:16px;opacity:.9;color:#dfe3ff;max-width:640px;margin:12px auto 0}
+/* animated blobs layer */
+.hero-blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.blob{position:absolute;border-radius:50%;filter:blur(24px);opacity:.35;
+  background:radial-gradient(circle at 30% 30%, var(--tint), transparent 70%);animation:float 14s ease-in-out infinite}
+.blob.b1{width:220px;height:220px;top:-40px;left:8%;animation-delay:0s}
+.blob.b2{width:160px;height:160px;top:20px;right:12%;background:radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);animation-delay:-4s}
+.blob.b3{width:120px;height:120px;bottom:-30px;left:22%;animation-delay:-8s}
+/* orbiting dots around logo */
+.orbit{position:absolute;left:50%;top:118px;width:0;height:0;z-index:1;pointer-events:none}
+.orbit i{position:absolute;display:block;border-radius:50%}
+.orbit .d1{width:12px;height:12px;background:var(--tint);animation:orbit1 9s linear infinite}
+.orbit .d2{width:8px;height:8px;background:var(--accent);animation:orbit2 12s linear infinite}
+.orbit .d3{width:10px;height:10px;background:var(--tint);opacity:.6;animation:orbit3 15s linear infinite}
+.orbit .ring{width:260px;height:260px;border:1.5px dashed color-mix(in srgb,var(--tint) 35%,transparent);border-radius:50%;left:-130px;top:-130px;animation:spin 40s linear infinite}
+.orbit .ring2{width:340px;height:340px;border:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);border-radius:50%;left:-170px;top:-170px;animation:spin 60s linear infinite reverse}
+
+@keyframes float{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(24px) translateX(14px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes orbit1{from{transform:rotate(0) translateX(130px) rotate(0)}to{transform:rotate(360deg) translateX(130px) rotate(-360deg)}}
+@keyframes orbit2{from{transform:rotate(120deg) translateX(170px) rotate(-120deg)}to{transform:rotate(480deg) translateX(170px) rotate(-480deg)}}
+@keyframes orbit3{from{transform:rotate(240deg) translateX(150px) rotate(-240deg)}to{transform:rotate(600deg) translateX(150px) rotate(-600deg)}}
+
+.hero-inner{position:relative;z-index:3;max-width:760px;margin:0 auto}
+.hero-logo{max-height:130px;max-width:300px;margin:0 auto 22px;display:block;object-fit:contain;animation:logoIn .8s cubic-bezier(.2,.8,.2,1) both;filter:drop-shadow(0 8px 24px color-mix(in srgb,var(--tint) 25%,transparent))}
+@keyframes logoIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.hero-title{font-size:30px;font-weight:800;margin:8px 0 4px;letter-spacing:.2px;color:var(--ink)}
+.hero-sub{font-size:16px;color:var(--muted);max-width:640px;margin:12px auto 0}
+@media(prefers-reduced-motion:reduce){.blob,.orbit i,.orbit .ring,.orbit .ring2,.hero-logo{animation:none}}
 
 /* ---------- CONTAINER ---------- */
 .wrap{max-width:760px;margin:-28px auto 60px;padding:0 18px;position:relative;z-index:5}

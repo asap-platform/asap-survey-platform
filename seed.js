@@ -17,13 +17,13 @@ const intro = `تعمل أساب للتقنية القانونية على تطو
 
 const thanks = `شكرًا لمشاركتكم. ستساعدنا إجاباتكم على فهم احتياجات الجهات والفرق القانونية بصورة أفضل، وتحديد الأولويات التي ينبغي أن نبني عليها تجربة أساب. سيقوم فريق أساب بمراجعة الردود والتواصل مع الجهات الملائمة للمرحلة التجريبية.`;
 
-const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,hero_title,thanks,published)
-  VALUES (?,?,?,?,?,?,?,?,1)`).run(
+const info = db.prepare(`INSERT INTO surveys (slug,title,intro,logo,color_primary,color_accent,company,hero_title,thanks,published)
+  VALUES (?,?,?,?,?,?,?,?,?,1)`).run(
   SLUG,
   'استبيان تطوير تجربة إدارة الأعمال القانونية',
   intro,
-  '/asap-legaltech-logo.png',
-  '#7B2E8E', '#29ABE2',
+  '/logos/legaltech.png',
+  '#7B2E8E', '#29ABE2', 'legaltech',
   'استبيان تطوير تجربة إدارة الأعمال القانونية',
   thanks);
 const sid = Number(info.lastInsertRowid);

@@ -35,6 +35,14 @@
   .link-copy{cursor:pointer;color:var(--accent);font-size:13px}
   .flex1{flex:1;min-width:180px}
   .drag{cursor:grab;color:#aaa;font-size:18px;user-select:none}
+  .companies{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .compcard{border:2px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;text-align:center;background:#fff;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .compcard:hover{border-color:var(--accent)}
+  .compcard.sel{border-color:var(--primary);box-shadow:0 4px 16px rgba(0,0,0,.08)}
+  .compcard img{height:46px;max-width:100%;object-fit:contain}
+  .compcard .cname{font-size:13px;font-weight:700}
+  .compcard .cdot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.1)}
+  @media(max-width:600px){.companies{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -89,18 +97,29 @@
         </div>
         <label class="field"><span>عنوان الواجهة (Hero)</span><input id="f_hero" placeholder="نص كبير يظهر أسفل الشعار"></label>
         <label class="field"><span>النص التعريفي (كل سطر فقرة)</span><textarea id="f_intro" style="min-height:120px"></textarea></label>
-        <div class="grid">
-          <label class="field"><span>اللون الأساسي</span><input type="color" id="f_cp" value="#7B2E8E" style="height:46px;padding:4px"></label>
-          <label class="field"><span>اللون الثانوي</span><input type="color" id="f_ca" value="#29ABE2" style="height:46px;padding:4px"></label>
+
+        <div class="field">
+          <span>الشركة التابع لها الاستبيان (تحدد اللون والشعار تلقائيًا)</span>
+          <div id="companyGrid" class="companies"></div>
         </div>
-        <label class="field"><span>الشعار</span>
-          <div class="row">
-            <input id="f_logo" class="flex1" placeholder="رابط الشعار أو ارفع صورة">
-            <input type="file" id="logoFile" accept="image/*" onchange="uploadLogo(this)" style="display:none">
-            <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('logoFile').click()">رفع صورة</button>
+
+        <details style="margin-bottom:12px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--muted)">تخصيص متقدم (اختياري): تعديل اللون أو الشعار يدويًا</summary>
+          <div style="padding-top:12px">
+            <div class="grid">
+              <label class="field"><span>اللون الأساسي</span><input type="color" id="f_cp" value="#7B2E8E" style="height:46px;padding:4px"></label>
+              <label class="field"><span>اللون الثانوي</span><input type="color" id="f_ca" value="#29ABE2" style="height:46px;padding:4px"></label>
+            </div>
+            <label class="field"><span>الشعار</span>
+              <div class="row">
+                <input id="f_logo" class="flex1" placeholder="رابط الشعار أو ارفع صورة">
+                <input type="file" id="logoFile" accept="image/*" onchange="uploadLogo(this)" style="display:none">
+                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('logoFile').click()">رفع صورة</button>
+              </div>
+              <img id="logoPrev" style="max-height:60px;margin-top:8px;display:none">
+            </label>
           </div>
-          <img id="logoPrev" style="max-height:60px;margin-top:8px;display:none">
-        </label>
+        </details>
         <label class="field"><span>رسالة الشكر بعد الإرسال</span><textarea id="f_thanks"></textarea></label>
         <label class="field row" style="gap:8px;align-items:center">
           <input type="checkbox" id="f_pub" style="width:18px;height:18px"> <span style="margin:0">منشور (متاح للجمهور)</span>
