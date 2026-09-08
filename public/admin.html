@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة إدارة الاستبيانات — أساب</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{--primary:#7B2E8E;--accent:#29ABE2}
+  .topbar{background:linear-gradient(160deg,#150f36,#1f1550);color:#fff;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .topbar h1{font-size:18px;margin:0;font-weight:800}
+  .topbar .sub{font-size:12px;opacity:.7}
+  .adm-wrap{max-width:960px;margin:24px auto;padding:0 18px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  label.field{display:block;margin-bottom:12px}
+  label.field > span{display:block;font-weight:700;margin-bottom:6px;font-size:14px}
+  .slist{display:grid;gap:12px}
+  .surveycard{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .surveycard .meta small{color:var(--muted)}
+  .swatch{width:18px;height:18px;border-radius:5px;display:inline-block;vertical-align:middle;border:1px solid rgba(0,0,0,.1)}
+  .qcard{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:#fbfbfe}
+  .qcard.section{background:linear-gradient(90deg,rgba(123,46,142,.08),transparent);border-inline-start:4px solid var(--primary)}
+  .qtop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .qtop select,.qtop input{padding:8px 10px}
+  .opts input{margin-bottom:6px}
+  .mini{font-size:13px;color:var(--muted)}
+  .hidden{display:none!important}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:right;vertical-align:top}
+  th{background:#f2f0f9;font-weight:700;position:sticky;top:0}
+  .tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px}
+  .tag{font-size:11px;background:#eee;border-radius:6px;padding:2px 7px;color:#555}
+  .link-copy{cursor:pointer;color:var(--accent);font-size:13px}
+  .flex1{flex:1;min-width:180px}
+  .drag{cursor:grab;color:#aaa;font-size:18px;user-select:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="adm-wrap" style="max-width:420px;margin-top:80px">
+  <div class="card">
+    <h2 style="margin-top:0">لوحة إدارة الاستبيانات</h2>
+    <p class="note">أدخل كلمة مرور المسؤول للمتابعة.</p>
+    <label class="field"><span>كلمة المرور</span><input type="password" id="pass" autocomplete="current-password"></label>
+    <div id="loginErr" class="err"></div>
+    <button class="btn" onclick="login()">دخول</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div><h1>لوحة إدارة الاستبيانات</h1><div class="sub">أساب — منصة الاستبيانات</div></div>
+    <div class="row">
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:#fff" onclick="showPassword()">تغيير كلمة المرور</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.15)" onclick="logout()">خروج</button>
+    </div>
+  </div>
+  <div class="adm-wrap">
+
+    <!-- LIST VIEW -->
+    <div id="listView">
+      <div class="between" style="margin-bottom:16px">
+        <h2 style="margin:0">الاستبيانات</h2>
+        <button class="btn btn-sm" onclick="newSurvey()">+ استبيان جديد</button>
+      </div>
+      <div id="slist" class="slist"></div>
+    </div>
+
+    <!-- EDITOR VIEW -->
+    <div id="editView" class="hidden">
+      <div class="between" style="margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" onclick="backToList()">→ رجوع للقائمة</button>
+        <div class="row">
+          <a id="openLink" class="btn btn-accent btn-sm" target="_blank">فتح الاستبيان ↗</a>
+          <button class="btn btn-sm" onclick="saveSurvey()">حفظ التغييرات</button>
+        </div>
+      </div>
+      <div id="saveMsg" class="pill hidden" style="margin-bottom:12px"></div>
+
+      <div class="card">
+        <h3 style="margin-top:0">الإعدادات العامة</h3>
+        <div class="grid">
+          <label class="field"><span>عنوان الاستبيان</span><input id="f_title"></label>
+          <label class="field"><span>الرابط (slug)</span><input id="f_slug" placeholder="مثال: design-partners"></label>
+        </div>
+        <label class="field"><span>عنوان الواجهة (Hero)</span><input id="f_hero" placeholder="نص كبير يظهر أسفل الشعار"></label>
+        <label class="field"><span>النص التعريفي (كل سطر فقرة)</span><textarea id="f_intro" style="min-height:120px"></textarea></label>
+        <div class="grid">
+          <label class="field"><span>اللون الأساسي</span><input type="color" id="f_cp" value="#7B2E8E" style="height:46px;padding:4px"></label>
+          <label class="field"><span>اللون الثانوي</span><input type="color" id="f_ca" value="#29ABE2" style="height:46px;padding:4px"></label>
+        </div>
+        <label class="field"><span>الشعار</span>
+          <div class="row">
+            <input id="f_logo" class="flex1" placeholder="رابط الشعار أو ارفع صورة">
+            <input type="file" id="logoFile" accept="image/*" onchange="uploadLogo(this)" style="display:none">
+            <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('logoFile').click()">رفع صورة</button>
+          </div>
+          <img id="logoPrev" style="max-height:60px;margin-top:8px;display:none">
+        </label>
+        <label class="field"><span>رسالة الشكر بعد الإرسال</span><textarea id="f_thanks"></textarea></label>
+        <label class="field row" style="gap:8px;align-items:center">
+          <input type="checkbox" id="f_pub" style="width:18px;height:18px"> <span style="margin:0">منشور (متاح للجمهور)</span>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="between"><h3 style="margin:0">الأسئلة</h3>
+          <div class="row">
+            <button class="btn btn-sm btn-ghost" onclick="addQ('section')">+ عنوان قسم</button>
+            <button class="btn btn-sm" onclick="addQ('text')">+ سؤال</button>
+          </div>
+        </div>
+        <p class="mini">اسحب من ⠿ لإعادة الترتيب. الأنواع: نص، فقرة، رقم، جوال، بريد، اختيار واحد، اختيارات متعددة، مقياس، عنوان قسم.</p>
+        <div id="qlist"></div>
+      </div>
+
+      <div class="card">
+        <div class="between"><h3 style="margin:0">الردود (<span id="respCount">0</span>)</h3>
+          <div class="row">
+            <button class="btn btn-sm btn-ghost" onclick="loadResponses()">تحديث</button>
+            <button class="btn btn-sm btn-accent" onclick="exportXlsx()">تحميل Excel ⬇</button>
+          </div>
+        </div>
+        <div id="respWrap" class="tablewrap" style="margin-top:12px"></div>
+      </div>
+
+      <div style="text-align:center;margin:20px 0">
+        <button class="btn btn-danger btn-sm" onclick="deleteSurvey()">حذف هذا الاستبيان نهائيًا</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- password modal -->
+<div id="pwModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:50">
+  <div class="card" style="max-width:380px;width:90%">
+    <h3 style="margin-top:0">تغيير كلمة المرور</h3>
+    <label class="field"><span>كلمة المرور الجديدة</span><input type="password" id="newPass"></label>
+    <div id="pwErr" class="err"></div>
+    <div class="row"><button class="btn btn-sm" onclick="savePassword()">حفظ</button>
+    <button class="btn btn-sm btn-ghost" onclick="document.getElementById('pwModal').classList.add('hidden')">إلغاء</button></div>
+  </div>
+</div>
+
+<script src="/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استبيان</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="hero">
+  <div class="hero-inner">
+    <img id="logo" class="hero-logo" alt="" style="display:none">
+    <h1 id="heroTitle" class="hero-title"></h1>
+    <p id="heroSub" class="hero-sub"></p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="introCard" class="card intro" style="display:none"></div>
+  <form id="form"></form>
+  <div id="thanks" class="card" style="display:none">
+    <div class="thanks-box">
+      <div class="thanks-icon">✅</div>
+      <div id="thanksText" style="font-size:17px"></div>
+    </div>
+  </div>
+  <div id="notfound" class="card" style="display:none;text-align:center">
+    <h2>الاستبيان غير متاح</h2>
+    <p class="note">الرابط غير صحيح أو أن الاستبيان غير منشور حاليًا.</p>
+  </div>
+</div>
+<div class="foot" id="foot"></div>
+
+<script>
+const slug = location.pathname.split('/s/')[1]?.replace(/\/$/,'') || '';
+let survey=null; const answers={};
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function load(){
+  try{
+    const r = await fetch('/api/survey/'+encodeURIComponent(slug));
+    if(!r.ok) throw new Error('nf');
+    survey = await r.json();
+    render();
+  }catch(e){
+    document.querySelector('.hero').style.display='none';
+    document.getElementById('notfound').style.display='block';
+  }
+}
+
+function applyTheme(){
+  document.documentElement.style.setProperty('--primary', survey.color_primary||'#7B2E8E');
+  document.documentElement.style.setProperty('--accent', survey.color_accent||'#29ABE2');
+  document.title = survey.title || 'استبيان';
+  if(survey.logo){const l=document.getElementById('logo');l.src=survey.logo;l.style.display='block';}
+  document.getElementById('heroTitle').textContent = survey.hero_title || survey.title || '';
+  document.getElementById('foot').textContent = (survey.title||'') + ' © ' + new Date().getFullYear();
+}
+
+function render(){
+  applyTheme();
+  if(survey.intro){
+    const ic=document.getElementById('introCard');
+    ic.style.display='block';
+    ic.innerHTML = survey.intro.split('\n').filter(x=>x.trim()).map(x=>'<p>'+esc(x)+'</p>').join('');
+  }
+  const form=document.getElementById('form');
+  let html='<div class="card">';
+  let openedSection=false;
+  survey.questions.forEach(q=>{
+    if(q.type==='section'){
+      if(openedSection) html+='</div>';
+      html+='</div>'; // close previous card
+      html+='<div class="card"><div class="section-head"><div class="section-title">'+esc(q.label)+'</div>'+
+            (q.help?'<div class="section-help">'+esc(q.help)+'</div>':'')+'</div>';
+      openedSection=true;
+      return;
+    }
+    html+=renderQ(q);
+  });
+  html+='</div>';
+  html+='<div id="formErr" class="err" style="display:none"></div>';
+  html+='<div class="submit-row"><button type="submit" class="btn" id="submitBtn">إرسال ↵</button></div>';
+  form.innerHTML=html;
+  bind();
+  form.addEventListener('submit',submit);
+}
+
+function renderQ(q){
+  const req = q.required ? '<span class="req">*</span>' : '';
+  let inner='';
+  const name='q'+q.id;
+  if(q.type==='text') inner=`<input type="text" data-q="${q.id}">`;
+  else if(q.type==='textarea') inner=`<textarea data-q="${q.id}"></textarea>`;
+  else if(q.type==='number') inner=`<input type="number" data-q="${q.id}">`;
+  else if(q.type==='phone') inner=`<input type="tel" data-q="${q.id}" inputmode="tel" placeholder="05xxxxxxxx" pattern="[0-9+ ]{7,15}">`;
+  else if(q.type==='email') inner=`<input type="email" data-q="${q.id}" placeholder="name@example.com">`;
+  else if(q.type==='single'){
+    inner=(q.options||[]).map(o=>`<label class="opt"><input type="radio" name="${name}" value="${esc(o)}" data-q="${q.id}"><span>${esc(o)}</span></label>`).join('');
+  }
+  else if(q.type==='multi'){
+    inner=(q.options||[]).map(o=>`<label class="opt"><input type="checkbox" name="${name}" value="${esc(o)}" data-q="${q.id}" data-multi="1"><span>${esc(o)}</span></label>`).join('');
+    if(q.max_select>0) inner+=`<div class="max-note">يمكن اختيار ${q.max_select} خيارات كحد أقصى.</div>`;
+  }
+  else if(q.type==='scale'){
+    let items='';
+    for(let i=q.scale_min;i<=q.scale_max;i++) items+=`<div class="scale-item" data-scale="${q.id}" data-val="${i}">${i}</div>`;
+    inner=`<div class="scale">${items}</div>`;
+  }
+  return `<div class="q"><div class="q-label">${esc(q.label)}${req}</div>`+
+         (q.help?`<div class="q-help">${esc(q.help)}</div>`:'')+inner+`</div>`;
+}
+
+function bind(){
+  document.querySelectorAll('input[data-q],textarea[data-q]').forEach(el=>{
+    if(el.type==='radio'){
+      el.addEventListener('change',()=>{answers[el.dataset.q]=el.value;
+        el.closest('.q').querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+        el.closest('.opt').classList.add('sel');});
+    } else if(el.dataset.multi){
+      el.addEventListener('change',()=>{
+        const q=survey.questions.find(x=>x.id==el.dataset.q);
+        let arr=answers[el.dataset.q]||[];
+        if(el.checked){
+          if(q.max_select>0 && arr.length>=q.max_select){el.checked=false;return;}
+          arr=[...arr,el.value];
+        } else arr=arr.filter(v=>v!==el.value);
+        answers[el.dataset.q]=arr;
+        el.closest('.opt').classList.toggle('sel',el.checked);
+      });
+    } else {
+      el.addEventListener('input',()=>answers[el.dataset.q]=el.value);
+    }
+  });
+  document.querySelectorAll('[data-scale]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      answers[el.dataset.scale]=Number(el.dataset.val);
+      el.parentElement.querySelectorAll('.scale-item').forEach(i=>i.classList.remove('sel'));
+      el.classList.add('sel');
+    });
+  });
+}
+
+async function submit(e){
+  e.preventDefault();
+  const errBox=document.getElementById('formErr');errBox.style.display='none';
+  // client validation
+  for(const q of survey.questions){
+    if(q.type==='section')continue;
+    if(q.required){
+      const v=answers[q.id];
+      if(v==null||v===''||(Array.isArray(v)&&v.length===0)){
+        errBox.textContent='يرجى الإجابة على: '+q.label;errBox.style.display='block';
+        errBox.scrollIntoView({behavior:'smooth',block:'center'});return;
+      }
+    }
+    if(q.type==='email'&&answers[q.id]&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(answers[q.id])){
+      errBox.textContent='بريد إلكتروني غير صحيح: '+q.label;errBox.style.display='block';return;
+    }
+  }
+  const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='جارٍ الإرسال...';
+  try{
+    const r=await fetch('/api/survey/'+encodeURIComponent(slug)+'/submit',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:answers})});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'خطأ');
+    document.getElementById('form').style.display='none';
+    document.getElementById('introCard').style.display='none';
+    document.getElementById('thanksText').textContent=survey.thanks||'شكرًا لمشاركتكم.';
+    document.getElementById('thanks').style.display='block';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(err){
+    errBox.textContent=err.message;errBox.style.display='block';
+    btn.disabled=false;btn.textContent='إرسال ↵';
+  }
+}
+load();
+</script>
+</body>
+</html>
