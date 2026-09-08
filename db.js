@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS users (
   invite_token TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
+-- co-owners: additional users who can view/edit a survey (beyond surveys.owner_id)
+CREATE TABLE IF NOT EXISTS survey_owners (
+  survey_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  PRIMARY KEY (survey_id, user_id)
+);
 `);
 
 const crypto = require('node:crypto');

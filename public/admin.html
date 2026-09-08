@@ -175,6 +175,21 @@
         <div id="respWrap" class="tablewrap" style="margin-top:12px"></div>
       </div>
 
+      <div class="card">
+        <div class="between"><h3 style="margin:0">ملاك هذا الاستبيان</h3></div>
+        <p class="mini">المالك الأساسي + مدراء إضافيون يظهر عندهم الاستبيان ويعدّلون عليه. مفيد عند تغيّر الموظفين: أضف الجديد ثم احذف القديم.</p>
+        <div id="ownersList" style="margin-bottom:12px"></div>
+        <div class="row">
+          <input id="coEmail" class="flex1" type="email" placeholder="بريد المدير الإضافي">
+          <button class="btn btn-sm" onclick="addOwner()">إضافة مالك</button>
+        </div>
+        <div id="ownerErr" class="err"></div>
+        <div id="ownerInvite" class="hidden" style="margin-top:10px;padding:10px;background:rgba(41,171,226,.08);border-radius:10px">
+          <div class="mini" id="ownerInviteMsg" style="font-weight:700;margin-bottom:6px"></div>
+          <div class="row"><input id="ownerInviteLink" class="flex1" readonly style="font-size:12px"><button class="btn btn-sm btn-accent" onclick="copyOwnerInvite()">نسخ</button></div>
+        </div>
+      </div>
+
       <div style="text-align:center;margin:20px 0">
         <button class="btn btn-danger btn-sm" onclick="deleteSurvey()">حذف هذا الاستبيان نهائيًا</button>
       </div>

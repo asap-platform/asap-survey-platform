@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const db = require('./db');
 const { buildXlsx } = require('./xlsx');
 const COMPANIES = require('./companies');
+const { maybeSendInvite } = require('./mailer');
 
 const PORT = process.env.PORT || 4321;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -150,20 +151,21 @@ const server = http.createServer(async (req, res) => {
       const me = currentUser(req);
       if (!me) return sendJson(res, 401, { error: 'unauthorized' });
       const isOwner = me.role === 'owner';
-      // returns the survey row if the user may access it, else null
+      const isCoOwner = (sid) => !!db.prepare('SELECT 1 FROM survey_owners WHERE survey_id=? AND user_id=?').get(Number(sid), me.id);
+      // returns the survey row if the user may access it; null if not found; false if forbidden
       const accessibleSurvey = (id) => {
         const s = db.prepare('SELECT * FROM surveys WHERE id=?').get(Number(id));
         if (!s) return null;
-        if (!isOwner && s.owner_id !== me.id) return false; // exists but forbidden
-        return s;
+        if (isOwner || s.owner_id === me.id || isCoOwner(id)) return s;
+        return false; // exists but forbidden
       };
 
-      // list surveys (owner sees all; creators see only their own)
+      // list surveys (site owner sees all; others see owned + co-owned)
       if (p === '/api/admin/surveys' && method === 'GET') {
         const sql = 'SELECT s.*, (SELECT COUNT(*) FROM responses r WHERE r.survey_id=s.id) AS responses, u.email AS owner_email FROM surveys s LEFT JOIN users u ON u.id=s.owner_id';
         const list = isOwner
           ? db.prepare(sql + ' ORDER BY s.id DESC').all()
-          : db.prepare(sql + ' WHERE s.owner_id=? ORDER BY s.id DESC').all(me.id);
+          : db.prepare(sql + ' WHERE s.owner_id=? OR s.id IN (SELECT survey_id FROM survey_owners WHERE user_id=?) ORDER BY s.id DESC').all(me.id, me.id);
         return sendJson(res, 200, list);
       }
       // create survey (owned by current user)
@@ -200,7 +202,9 @@ const server = http.createServer(async (req, res) => {
         db.prepare('INSERT INTO users (email,name,role,status,invite_token) VALUES (?,?,?,?,?)')
           .run(email, b.name || '', 'creator', 'invited', token);
         const base = process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
-        return sendJson(res, 200, { ok: true, invite_link: `${base}/invite?token=${token}` });
+        const link = `${base}/invite?token=${token}`;
+        const emailed = await maybeSendInvite(email, link).catch(() => false);
+        return sendJson(res, 200, { ok: true, invite_link: link, emailed });
       }
       // resend/regenerate invite
       if ((m = p.match(/^\/api\/admin\/users\/(\d+)\/invite$/)) && method === 'POST') {
@@ -210,7 +214,9 @@ const server = http.createServer(async (req, res) => {
         const token = crypto.randomBytes(24).toString('hex');
         db.prepare('UPDATE users SET invite_token=?, status=? WHERE id=?').run(token, u.status === 'active' ? 'active' : 'invited', u.id);
         const base = process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
-        return sendJson(res, 200, { ok: true, invite_link: `${base}/invite?token=${token}` });
+        const link = `${base}/invite?token=${token}`;
+        const emailed = await maybeSendInvite(u.email, link).catch(() => false);
+        return sendJson(res, 200, { ok: true, invite_link: link, emailed });
       }
       if ((m = p.match(/^\/api\/admin\/users\/(\d+)$/)) && method === 'DELETE') {
         if (!isOwner) return sendJson(res, 403, { error: 'صلاحية المالك فقط' });
@@ -224,6 +230,63 @@ const server = http.createServer(async (req, res) => {
       // who am I
       if (p === '/api/admin/me' && method === 'GET') {
         return sendJson(res, 200, { email: me.email, name: me.name, role: me.role });
+      }
+
+      // ---- survey co-owners (managers) ----
+      // list co-owners of a survey
+      if ((m = p.match(/^\/api\/admin\/surveys\/(\d+)\/owners$/)) && method === 'GET') {
+        const acc = accessibleSurvey(m[1]);
+        if (acc === null) return sendJson(res, 404, { error: 'not found' });
+        if (acc === false) return sendJson(res, 403, { error: 'ليس لديك صلاحية على هذا الاستبيان' });
+        const primary = db.prepare('SELECT id,email,name FROM users WHERE id=?').get(acc.owner_id);
+        const cos = db.prepare('SELECT u.id,u.email,u.name,u.status FROM survey_owners so JOIN users u ON u.id=so.user_id WHERE so.survey_id=?').all(Number(m[1]));
+        return sendJson(res, 200, { primary: primary || null, coOwners: cos });
+      }
+      // add a co-owner by email (creates an invited user if not present)
+      if ((m = p.match(/^\/api\/admin\/surveys\/(\d+)\/owners$/)) && method === 'POST') {
+        const acc = accessibleSurvey(m[1]);
+        if (acc === null) return sendJson(res, 404, { error: 'not found' });
+        if (acc === false) return sendJson(res, 403, { error: 'ليس لديك صلاحية على هذا الاستبيان' });
+        const b = await readJson(req);
+        const email = (b.email || '').trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return sendJson(res, 400, { error: 'بريد غير صحيح' });
+        let u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+        let invite_link = null;
+        if (!u) {
+          const token = crypto.randomBytes(24).toString('hex');
+          db.prepare('INSERT INTO users (email,name,role,status,invite_token) VALUES (?,?,?,?,?)')
+            .run(email, b.name || '', 'creator', 'invited', token);
+          u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+          const base = process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+          invite_link = `${base}/invite?token=${token}`;
+        }
+        if (u.id === acc.owner_id) return sendJson(res, 400, { error: 'هذا المستخدم هو المالك الأساسي بالفعل' });
+        db.prepare('INSERT OR IGNORE INTO survey_owners (survey_id,user_id) VALUES (?,?)').run(Number(m[1]), u.id);
+        // email invite if configured
+        let emailed = false;
+        if (invite_link) { emailed = await maybeSendInvite(email, invite_link).catch(() => false); }
+        return sendJson(res, 200, { ok: true, invite_link, emailed, isNew: !!invite_link });
+      }
+      // remove a co-owner
+      if ((m = p.match(/^\/api\/admin\/surveys\/(\d+)\/owners\/(\d+)$/)) && method === 'DELETE') {
+        const acc = accessibleSurvey(m[1]);
+        if (acc === null) return sendJson(res, 404, { error: 'not found' });
+        if (acc === false) return sendJson(res, 403, { error: 'ليس لديك صلاحية على هذا الاستبيان' });
+        db.prepare('DELETE FROM survey_owners WHERE survey_id=? AND user_id=?').run(Number(m[1]), Number(m[2]));
+        return sendJson(res, 200, { ok: true });
+      }
+      // transfer primary ownership to a user (owner or current primary only)
+      if ((m = p.match(/^\/api\/admin\/surveys\/(\d+)\/transfer$/)) && method === 'POST') {
+        const acc = accessibleSurvey(m[1]);
+        if (acc === null) return sendJson(res, 404, { error: 'not found' });
+        if (acc === false) return sendJson(res, 403, { error: 'ليس لديك صلاحية على هذا الاستبيان' });
+        if (!isOwner && acc.owner_id !== me.id) return sendJson(res, 403, { error: 'المالك الأساسي أو مالك المنصة فقط يمكنه النقل' });
+        const b = await readJson(req);
+        const target = db.prepare('SELECT * FROM users WHERE id=?').get(Number(b.userId));
+        if (!target) return sendJson(res, 400, { error: 'المستخدم غير موجود' });
+        db.prepare('UPDATE surveys SET owner_id=? WHERE id=?').run(target.id, Number(m[1]));
+        db.prepare('DELETE FROM survey_owners WHERE survey_id=? AND user_id=?').run(Number(m[1]), target.id);
+        return sendJson(res, 200, { ok: true });
       }
 
       // get one survey (admin) — ownership enforced

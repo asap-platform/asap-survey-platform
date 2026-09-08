@@ -154,8 +154,43 @@ async function openSurvey(id){
   $('f_pub').checked=!!current.published;
   selectedCompany = current.company || 'legaltech';
   renderCompanyGrid();
-  updateLogoPrev(); updateOpenLink(); renderQuestions(); loadResponses();
+  updateLogoPrev(); updateOpenLink(); renderQuestions(); loadResponses(); loadOwners();
 }
+
+// ---------- survey co-owners ----------
+async function loadOwners(){
+  const el=$('ownersList'); if(!el) return;
+  const r=await api('/api/admin/surveys/'+current.id+'/owners');
+  if(!r.ok){ el.innerHTML=''; return; }
+  const d=await r.json();
+  let html='';
+  if(d.primary){
+    html+=`<div class="surveycard" style="padding:10px 14px"><div class="meta"><b>${esc(d.primary.name||d.primary.email)}</b> <span class="tag">المالك الأساسي</span><br><small>${esc(d.primary.email)}</small></div></div>`;
+  }
+  d.coOwners.forEach(u=>{
+    html+=`<div class="surveycard" style="padding:10px 14px"><div class="meta"><b>${esc(u.name||u.email)}</b> ${u.status==='invited'?'<span class="tag">بانتظار التفعيل</span>':'<span class="tag">مدير</span>'}<br><small>${esc(u.email)}</small></div>
+      <button class="btn btn-sm btn-danger" onclick="removeOwner(${u.id})">إزالة</button></div>`;
+  });
+  el.innerHTML=html;
+}
+async function addOwner(){
+  const email=$('coEmail').value.trim(); $('ownerErr').textContent=''; $('ownerInvite').classList.add('hidden');
+  const r=await api('/api/admin/surveys/'+current.id+'/owners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+  const j=await r.json();
+  if(!r.ok){ $('ownerErr').textContent=j.error; return; }
+  $('coEmail').value='';
+  if(j.isNew){
+    $('ownerInviteMsg').textContent = j.emailed ? 'حساب جديد — أُرسلت الدعوة على بريده. (يمكنك أيضًا نسخ الرابط)' : 'حساب جديد — انسخ رابط الدعوة وأرسله له:';
+    $('ownerInviteLink').value=j.invite_link; $('ownerInvite').classList.remove('hidden');
+  }
+  loadOwners();
+}
+async function removeOwner(uid){
+  if(!confirm('إزالة هذا المدير من الاستبيان؟'))return;
+  await api('/api/admin/surveys/'+current.id+'/owners/'+uid,{method:'DELETE'});
+  loadOwners();
+}
+function copyOwnerInvite(){ navigator.clipboard.writeText($('ownerInviteLink').value); alert('تم نسخ رابط الدعوة'); }
 function backToList(){ loadList(); }
 function updateOpenLink(){ $('openLink').href='/s/'+($('f_slug').value||current.slug); }
 function updateLogoPrev(){ const v=$('f_logo').value; const p=$('logoPrev'); if(v){p.src=v;p.style.display='block';}else p.style.display='none'; }
