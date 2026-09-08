@@ -69,6 +69,10 @@ async function inviteUser(){
   const j=await r.json();
   if(!r.ok){ $('inviteErr').textContent=j.error; return; }
   $('inviteLink').value=j.invite_link; $('inviteResult').classList.remove('hidden');
+  const res=$('inviteResult'); const msg=res.querySelector('.inv-status')||document.createElement('div');
+  msg.className='inv-status'; msg.style.cssText='font-weight:700;margin-bottom:8px;color:'+(j.emailed?'#1a9d5a':'#8a6d00');
+  msg.textContent = j.emailed ? '✅ تم إرسال الدعوة على بريده تلقائيًا. (يمكنك أيضًا نسخ الرابط)' : 'ℹ️ لم يُفعّل الإرسال التلقائي — انسخ الرابط وأرسله يدويًا:';
+  if(!res.querySelector('.inv-status')) res.insertBefore(msg, res.firstChild);
   $('inviteEmail').value=''; $('inviteName').value=''; loadUsers();
 }
 function copyInvite(){ const el=$('inviteLink'); navigator.clipboard.writeText(el.value); alert('تم نسخ رابط الدعوة'); }
