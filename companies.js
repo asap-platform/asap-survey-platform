@@ -6,7 +6,7 @@ module.exports = [
     key: 'holding',
     name: 'أساب القابضة',
     en: 'ASAP LAW',
-    logo: '/logos/holding.jpg',
+    logo: '/logos/holding.png',
     color_primary: '#2E3192', // كحلي
     color_accent: '#29ABE2',
     tint: '#2E3192'
@@ -15,7 +15,7 @@ module.exports = [
     key: 'legal-services',
     name: 'أساب للخدمات القانونية',
     en: 'ASAP LAW — LEGAL SERVICES',
-    logo: '/logos/legal-services.jpg',
+    logo: '/logos/legal-services.png',
     color_primary: '#2E3192', // كحلي
     color_accent: '#29ABE2',
     tint: '#2E3192'
@@ -33,7 +33,7 @@ module.exports = [
     key: 'academy',
     name: 'أكاديمية أساب',
     en: 'ASAP LAW — ACADEMY',
-    logo: '/logos/academy.jpg',
+    logo: '/logos/academy.png',
     color_primary: '#0D2E1F', // أخضر غامق
     color_accent: '#29ABE2',
     tint: '#0D5C3A'
@@ -42,7 +42,7 @@ module.exports = [
     key: 'publishing',
     name: 'أساب للنشر والتوزيع',
     en: 'ASAP LAW — PUBLISHING',
-    logo: '/logos/publishing.jpg',
+    logo: '/logos/publishing.png',
     color_primary: '#58595B', // رمادي / رصاصي
     color_accent: '#808285',
     tint: '#6b6d70'
@@ -51,7 +51,7 @@ module.exports = [
     key: 'community',
     name: 'مجتمع أساب',
     en: 'ASAP LAW — COMMUNITY',
-    logo: '/logos/community.jpg',
+    logo: '/logos/community.png',
     color_primary: '#3AA9B0', // تركوازي مجتمع أساب
     color_accent: '#4A90D9',
     tint: '#3AA9B0'
