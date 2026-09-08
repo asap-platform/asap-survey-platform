@@ -9,7 +9,7 @@ const COMPANIES = require('./companies');
 
 const PORT = process.env.PORT || 4321;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.env.DATA_DIR || __dirname, 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // ---- simple session tokens for admin ----

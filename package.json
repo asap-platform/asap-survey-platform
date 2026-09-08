@@ -1,0 +1,14 @@
+{
+  "name": "asap-survey-platform",
+  "version": "1.0.0",
+  "description": "منصة استبيانات أساب - Node + SQLite (بدون تبعيات خارجية)",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
