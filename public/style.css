@@ -1,8 +1,8 @@
 /* ASAP Survey Platform — shared styles */
 :root{
-  --primary:#7B2E8E;
-  --accent:#29ABE2;
-  --navy:#1a1440;
+  --primary:#2b318f;
+  --accent:#4497db;
+  --navy:#2b318f;
   --ink:#1f2333;
   --muted:#6b7280;
   --line:#e6e8f0;
@@ -87,7 +87,7 @@ a{color:var(--primary);text-decoration:none}
 .q-label .req{color:#e0399a;margin-inline-start:4px}
 .q-help{color:var(--muted);font-size:13px;margin-bottom:10px}
 
-input[type=text],input[type=number],input[type=email],input[type=tel],textarea,select{
+input[type=text],input[type=number],input[type=email],input[type=tel],input[type=password],input[type=search],input[type=url],textarea,select{
   width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;
   font:inherit;color:var(--ink);background:#fff;transition:.15s;outline:none;
 }

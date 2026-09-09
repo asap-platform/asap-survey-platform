@@ -6,7 +6,12 @@
 <title>لوحة إدارة الاستبيانات — أساب</title>
 <link rel="stylesheet" href="/style.css">
 <style>
-  :root{--primary:#7B2E8E;--accent:#29ABE2}
+  :root{--primary:#2b318f;--accent:#4497db}
+  #login .card{padding:34px 30px}
+  #login .login-logo{display:block;max-width:200px;max-height:90px;margin:0 auto 18px;object-fit:contain}
+  #login h2{text-align:center;font-size:22px}
+  #login .note{text-align:center;margin-bottom:22px}
+  #login .btn{width:100%;margin-top:6px}
   .topbar{background:linear-gradient(160deg,#150f36,#1f1550);color:#fff;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
   .topbar h1{font-size:18px;margin:0;font-weight:800}
   .topbar .sub{font-size:12px;opacity:.7}
@@ -50,6 +55,7 @@
 <!-- LOGIN -->
 <div id="login" class="adm-wrap" style="max-width:420px;margin-top:80px">
   <div class="card">
+    <img class="login-logo" src="/logos/legal-services.png" alt="ASAP LAW">
     <h2 style="margin-top:0">لوحة إدارة الاستبيانات</h2>
     <p class="note">سجّل الدخول بالبريد وكلمة المرور.</p>
     <label class="field"><span>البريد الإلكتروني</span><input type="email" id="loginEmail" autocomplete="username" placeholder="you@asap.sa"></label>
