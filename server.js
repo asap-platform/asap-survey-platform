@@ -415,7 +415,35 @@ const server = http.createServer(async (req, res) => {
 
     // ---------- survey page ----------
     if (p.startsWith('/s/')) {
-      return send(res, 200, fs.readFileSync(path.join(PUBLIC_DIR, 'survey.html')), { 'Content-Type': MIME['.html'] });
+      let html = fs.readFileSync(path.join(PUBLIC_DIR, 'survey.html'), 'utf8');
+      try {
+        const slug = decodeURIComponent(p.slice(3).split('/')[0].split('?')[0]);
+        const s = getSurveyBySlug(slug);
+        if (s) {
+          const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          const title = esc(s.title || 'استبيان');
+          const desc = esc(s.hero_title || s.intro || 'شارك برأيك في استبيان أساب.');
+          const base = process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+          const url = `${base}/s/${encodeURIComponent(slug)}`;
+          let img = s.logo || '/logos/legal-services.png';
+          if (img && !/^https?:\/\//i.test(img)) img = base + (img.startsWith('/') ? '' : '/') + img;
+          const og = `<title>${title}</title>
+<meta name="description" content="${desc}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc}">
+<meta property="og:url" content="${url}">
+<meta property="og:image" content="${esc(img)}">
+<meta property="og:site_name" content="منصة استبيانات أساب">
+<meta property="og:locale" content="ar_AR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${desc}">
+<meta name="twitter:image" content="${esc(img)}">`;
+          html = html.replace('<title>استبيان</title>', og);
+        }
+      } catch (e) { /* fallback to static html */ }
+      return send(res, 200, Buffer.from(html), { 'Content-Type': MIME['.html'] });
     }
 
     // ---------- static ----------
